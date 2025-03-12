@@ -93,7 +93,7 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
                                 // Verificar si el precio ha cambiado
                                 List<PriceHistory> priceHistory = productToUpdate.getPriceHistory();
                                 if (priceHistory.isEmpty() || !price.equals(priceHistory.get(priceHistory.size() - 1).getPrice())) {
-                                    productToUpdate.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now())); // Agregar nuevo precio al historial
+                                    productToUpdate.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS")); // Agregar nuevo precio al historial
                                 }
 
                                 fullH4rdScraperRepository.save(productToUpdate);
@@ -101,7 +101,7 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
                             } else {
                                 // Insertar nuevo producto si no existe
                                 Product newProduct = new Product(title, imageUrl, productUrl, page_name);
-                                newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now()));
+                                newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
                                 fullH4rdScraperRepository.save(newProduct);
                                 productList.add(newProduct);
                             }
@@ -119,8 +119,8 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
                         hasNextPage = false;
                     }
 
-                    // Añadir un pequeño retraso para no sobrecargar el servidor
-                    Thread.sleep(1500);
+                    // ACTIVAR un pequeño retraso para no sobrecargar el servidor si hace falta
+//                    Thread.sleep(1500);
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error en URL " + categoryUrl, e);

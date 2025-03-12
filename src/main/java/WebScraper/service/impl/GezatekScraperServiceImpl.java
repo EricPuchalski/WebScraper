@@ -66,7 +66,7 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
                         // Verificar si el precio ha cambiado
                         List<PriceHistory> priceHistory = productToUpdate.getPriceHistory();
                         if (priceHistory.isEmpty() || !price.equals(priceHistory.get(priceHistory.size() - 1).getPrice())) {
-                            productToUpdate.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now())); // Agregar nuevo precio al historial
+                            productToUpdate.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS")); // Agregar nuevo precio al historial
                         }
 
                         gezatekScraperRepository.save(productToUpdate);
@@ -74,7 +74,7 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
                     } else {
                         // Insertar nuevo producto si no existe
                         Product newProduct = new Product(title, imageUrl, productUrl, page);
-                        newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now()));
+                        newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
                         gezatekScraperRepository.save(newProduct);
                         productList.add(newProduct);
                     }

@@ -3,10 +3,7 @@ package WebScraper.controller;
 import WebScraper.model.Product;
 import WebScraper.service.GezatekScraperService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -25,5 +22,19 @@ public class GezatekScraperController {
         return ResponseEntity.ok().body(null);
     }
 
+    @GetMapping
+    public ResponseEntity<List<Product>> findAll(){
+        List<Product> products = gezatekScraperService.findAll();
+        return ResponseEntity.ok(products);
+    }
+
+    @GetMapping("/")
+    public ResponseEntity<List<Product>> findProducts(@RequestParam String name){
+        List<Product> products = gezatekScraperService.findProducts(name);
+        if(products.isEmpty()){
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(products);
+    }
 
 }

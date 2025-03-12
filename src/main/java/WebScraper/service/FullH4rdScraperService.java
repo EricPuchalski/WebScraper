@@ -4,10 +4,8 @@ import WebScraper.model.Product;
 
 import java.util.List;
 
-public interface GezatekScraperService {
-    List<Product> updateProducts();
-
+public interface FullH4rdScraperService {
+    List    <Product> updateProducts();
     List<Product> findProducts(String name);
-
     List<Product> findAll();
 }

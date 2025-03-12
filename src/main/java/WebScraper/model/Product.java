@@ -1,29 +1,59 @@
 package WebScraper.model;
 
+
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "products")
 public class Product {
+    @Id
+    private String id;
     private String name;
-
-    private Double price;
-
+    private List<PriceHistory> priceHistory; // Historial de precios
     private String imageUrl;
-
     private String productUrl;
+    private String page;
 
-    public Product(String name, Double price, String urlImage, String urlProduct) {
-        this.name = name;
-        this.price = price;
-        this.imageUrl = urlImage;
-        this.productUrl = urlProduct;
-    }
 
 
     public Product() {
     }
 
+    public Product( String name, String imageUrl, String productUrl, String page) {
+        this.name = name;
+        this.imageUrl = imageUrl;
+        this.productUrl = productUrl;
+        this.page = page;
+        this.priceHistory = new ArrayList<>(); // Inicializar la lista de historial de precios
+
+    }
+
+    public List<PriceHistory> getPriceHistory() {
+        return priceHistory;
+    }
+
+    public void setPriceHistory(List<PriceHistory> priceHistory) {
+        this.priceHistory = priceHistory;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getPage() {
+        return page;
+    }
+
+    public void setPage(String page) {
+        this.page = page;
+    }
 
     public String getImageUrl() {
         return imageUrl;
@@ -49,12 +79,5 @@ public class Product {
         this.name = name;
     }
 
-    public Double getPrice() {
-        return price;
-    }
-
-    public void setPrice(Double price) {
-        this.price = price;
-    }
 
 }

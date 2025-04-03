@@ -1,7 +1,8 @@
 package WebScraper.controller;
 
-import WebScraper.model.Product;
+import WebScraper.dto.ProductResponseDto;
 import WebScraper.service.FullH4rdScraperService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,23 +17,32 @@ public class FullH4rdScraperController {
     }
 
     @PostMapping()
-    public ResponseEntity<List<Product>> updateProducts() {
+    public ResponseEntity<List<ProductResponseDto>> updateProducts() {
         fullH4rdScraperService.updateProducts();
         return ResponseEntity.ok().body(null);
     }
+    //TODO UNA FUNCION PARA TRAER LA CANTIDAD DE PRODUCTOS TOTALES
 
     @GetMapping
-    public ResponseEntity<List<Product>> findAll() {
-        List<Product> products = fullH4rdScraperService.findAll();
+    public ResponseEntity<Page<ProductResponseDto>> findAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "21") int size) {
+        Page<ProductResponseDto> products = fullH4rdScraperService.findAll(page, size);
         return ResponseEntity.ok(products);
     }
 
-    @GetMapping("/")
-    public ResponseEntity<List<Product>> findProducts(@RequestParam String name) {
-        List<Product> products = fullH4rdScraperService.findProducts(name);
+    @GetMapping("/search")
+    public ResponseEntity<Page<ProductResponseDto>> findProducts(
+            @RequestParam String name,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "21") int size) {
+
+        Page<ProductResponseDto> products = fullH4rdScraperService.findProducts(name, page, size);
+
         if (products.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
         return ResponseEntity.ok(products);
     }
 }

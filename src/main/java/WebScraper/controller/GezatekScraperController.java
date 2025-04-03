@@ -1,7 +1,8 @@
 package WebScraper.controller;
 
-import WebScraper.model.Product;
+import WebScraper.dto.ProductResponseDto;
 import WebScraper.service.GezatekScraperService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,23 +18,31 @@ public class GezatekScraperController {
     }
 
     @PostMapping()
-    public ResponseEntity<List<Product>> updateProducts() {
+    public ResponseEntity<List<ProductResponseDto>> updateProducts() {
         gezatekScraperService.updateProducts();
         return ResponseEntity.ok().body(null);
     }
 
     @GetMapping
-    public ResponseEntity<List<Product>> findAll(){
-        List<Product> products = gezatekScraperService.findAll();
+    public ResponseEntity<Page<ProductResponseDto>> findAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "21") int size) {
+        Page<ProductResponseDto> products = gezatekScraperService.findAll(page, size);
         return ResponseEntity.ok(products);
     }
 
-    @GetMapping("/")
-    public ResponseEntity<List<Product>> findProducts(@RequestParam String name){
-        List<Product> products = gezatekScraperService.findProducts(name);
-        if(products.isEmpty()){
+    @GetMapping("/search")
+    public ResponseEntity<Page<ProductResponseDto>> findProducts(
+            @RequestParam String name,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "21") int size) {
+
+        Page<ProductResponseDto> products = gezatekScraperService.findProducts(name, page, size);
+
+        if (products.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+
         return ResponseEntity.ok(products);
     }
 

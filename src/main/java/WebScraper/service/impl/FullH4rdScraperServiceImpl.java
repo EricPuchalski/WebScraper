@@ -1,5 +1,7 @@
 package WebScraper.service.impl;
 
+import WebScraper.dto.ProductResponseDto;
+import WebScraper.mapper.ProductMapper;
 import WebScraper.model.PriceHistory;
 import WebScraper.model.Product;
 import WebScraper.repository.FullH4rdScraperRepository;
@@ -9,28 +11,37 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 @Service
 public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
     private static final Logger logger = Logger.getLogger(FullH4rdScraperServiceImpl.class.getName());
-    private final FullH4rdScraperRepository fullH4rdScraperRepository;
-    private final String baseUrl = "https://fullh4rd.com.ar";
-    private final String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
+    private static final String PAGE_NAME = "FullH4rd";
+    private static final String BASE_URL = "https://fullh4rd.com.ar";
+    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
 
-    public FullH4rdScraperServiceImpl(FullH4rdScraperRepository fullH4rdScraperRepository) {
+    private final FullH4rdScraperRepository fullH4rdScraperRepository;
+    private final ProductMapper productMapper;
+
+    public FullH4rdScraperServiceImpl(FullH4rdScraperRepository fullH4rdScraperRepository, ProductMapper productMapper) {
         this.fullH4rdScraperRepository = fullH4rdScraperRepository;
+        this.productMapper = productMapper;
     }
 
     @Override
-    public List<Product> updateProducts() {
+    public List<ProductResponseDto> updateProducts() {
         List<Product> productList = new ArrayList<>();
         List<String> categories = FullH4rdUtils.getAllCategoryUrls();
 
@@ -40,109 +51,146 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
                 boolean hasNextPage = true;
 
                 while (hasNextPage) {
-                    // Construir la URL para la página actual
-                    String url = categoryUrl.replaceAll("/\\d+$", "/" + page);
+                    String url = buildPageUrl(categoryUrl, page);
                     logger.info("Procesando URL: " + url);
 
-                    // Conectar a la URL con el userAgent configurado
-                    Document doc = Jsoup.connect(url)
-                            .userAgent(userAgent)
-                            .timeout(10000)
-                            .get();
-
+                    Document doc = fetchDocument(url);
                     Elements products = doc.select(".product-list");
 
-                    // Si no hay productos, salimos del ciclo
                     if (products.isEmpty()) {
                         hasNextPage = false;
                         continue;
                     }
 
                     for (Element product : products) {
-                        try {
-                            String title = product.select(".info > h3").text();
-
-                            Element priceElement = product.select(".price").first();
-                            // Obtener solo el texto directo del div, excluyendo el contenido del span
-                            String priceText = priceElement.ownText();
-                            if (priceText.contains(",")) {
-                                priceText = priceText.split(",")[0];
-                            }
-                            priceText = priceText.replaceAll("[^\\d]", "");
-                            Double price = Double.valueOf(priceText);
-
-                            // Obtener la URL de la imagen
-                            String relativeImageUrl = product.select("a > div > img").attr("src");
-                            String imageUrl = baseUrl + (relativeImageUrl.startsWith("/") ? "" : "/") + relativeImageUrl;
-
-                            // Obtener la URL del producto
-                            String relativeProductUrl = product.select("a").attr("href");
-                            String productUrl = baseUrl + (relativeProductUrl.startsWith("/") ? "" : "/") + relativeProductUrl;
-
-                            String page_name = "FullH4rd";
-
-                            // Verificar si el producto ya existe en la base de datos
-                            Optional<Product> existingProduct = fullH4rdScraperRepository.findByProductUrl(productUrl);
-
-                            if (existingProduct.isPresent()) {
-                                Product productToUpdate = existingProduct.get();
-                                productToUpdate.setName(title);
-                                productToUpdate.setImageUrl(imageUrl);
-                                productToUpdate.setPage(page_name);
-
-                                // Verificar si el precio ha cambiado
-                                List<PriceHistory> priceHistory = productToUpdate.getPriceHistory();
-                                if (priceHistory.isEmpty() || !price.equals(priceHistory.get(priceHistory.size() - 1).getPrice())) {
-                                    productToUpdate.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS")); // Agregar nuevo precio al historial
-                                }
-
-                                fullH4rdScraperRepository.save(productToUpdate);
-                                productList.add(productToUpdate);
-                            } else {
-                                // Insertar nuevo producto si no existe
-                                Product newProduct = new Product(title, imageUrl, productUrl, page_name);
-                                newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
-                                fullH4rdScraperRepository.save(newProduct);
-                                productList.add(newProduct);
-                            }
-                        } catch (Exception e) {
-                            logger.log(Level.WARNING, "Error procesando producto individual: " + e.getMessage(), e);
-                            // Continuar con el siguiente producto
-                        }
+                        this.processProductElement(product, productList);
                     }
 
-                    // Verificar si hay página siguiente
-                    Element nextPageLink = doc.selectFirst("a[rel=next]");
-                    if (nextPageLink != null) {
-                        page++;
-                    } else {
-                        hasNextPage = false;
-                    }
-
-                    // ACTIVAR un pequeño retraso para no sobrecargar el servidor si hace falta
-//                    Thread.sleep(1500);
+                    hasNextPage = this.hasNextPage(doc);
+                    page++;
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error en URL " + categoryUrl, e);
             }
         }
-        return productList;
+
+        return this.convertToDto(productList);
     }
 
+    private String buildPageUrl(String categoryUrl, int page) {
+        return categoryUrl.replaceAll("/\\d+$", "/" + page);
+    }
+
+    private Document fetchDocument(String url) throws IOException {
+        return Jsoup.connect(url)
+                .userAgent(USER_AGENT)
+                .timeout(10000)
+                .get();
+    }
+
+    private void processProductElement(Element product, List<Product> productList) {
+        try {
+            String title = product.select(".info > h3").text();
+            Double price = this.extractPrice(product);
+            String imageUrl = this.buildFullUrl(product.select("a > div > img").attr("src"));
+            String productUrl = this.buildFullUrl(product.select("a").attr("href"));
+
+            Optional<Product> existingProduct = fullH4rdScraperRepository.findByProductUrl(productUrl);
+
+            if (existingProduct.isPresent()) {
+                updateExistingProduct(existingProduct.get(), title, imageUrl, price, productList);
+            } else {
+                insertNewProduct(title, imageUrl, productUrl, price, productList);
+            }
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error procesando producto individual: " + e.getMessage(), e);
+        }
+    }
+
+    private Double extractPrice(Element product) {
+        String priceText = product.select(".price").first().ownText();
+        if (priceText.contains(",")) {
+            priceText = priceText.split(",")[0];
+        }
+        return Double.valueOf(priceText.replaceAll("[^\\d]", ""));
+    }
+
+    private String buildFullUrl(String relativeUrl) {
+        return BASE_URL + (relativeUrl.startsWith("/") ? "" : "/") + relativeUrl;
+    }
+
+    private void updateExistingProduct(Product productToUpdate, String title, String imageUrl, Double price, List<Product> productList) {
+        productToUpdate.setName(title);
+        productToUpdate.setImageUrl(imageUrl);
+        productToUpdate.setPage(PAGE_NAME);
+
+        List<PriceHistory> priceHistory = productToUpdate.getPriceHistory();
+        if (priceHistory.isEmpty() || !price.equals(priceHistory.get(priceHistory.size() - 1).getPrice())) {
+            productToUpdate.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
+        }
+
+        fullH4rdScraperRepository.save(productToUpdate);
+        productList.add(productToUpdate);
+    }
+
+    private void insertNewProduct(String title, String imageUrl, String productUrl, Double price, List<Product> productList) {
+        Product newProduct = new Product(title, imageUrl, productUrl, PAGE_NAME);
+        newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
+        fullH4rdScraperRepository.save(newProduct);
+        productList.add(newProduct);
+    }
+
+    private boolean hasNextPage(Document doc) {
+        return doc.selectFirst("a[rel=next]") != null;
+    }
+
+    private List<ProductResponseDto> convertToDto(List<Product> productList) {
+        return productList.stream()
+                .map(productMapper::toDto)
+                .collect(Collectors.toList());
+    }
 
     @Override
-    public List<Product> findProducts(String name) {
-        // Filtrar productos por nombre y página "fullh4rd"
+    public List<ProductResponseDto> findProducts(String name) {
         return fullH4rdScraperRepository.findAll().stream()
                 .filter(product -> product.getName().toLowerCase().contains(name.toLowerCase())
-                        && "fullh4rd".equalsIgnoreCase(product.getPage()))
-                .toList();
+                        && PAGE_NAME.equalsIgnoreCase(product.getPage()))
+                .map(productMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public List<Product> findAll() {
+    public List<ProductResponseDto> findAll() {
         return fullH4rdScraperRepository.findAll().stream()
-                .filter(product -> "fullh4rd".equalsIgnoreCase(product.getPage()))
+                .filter(product -> PAGE_NAME.equalsIgnoreCase(product.getPage()))
+                .map(productMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public Page<ProductResponseDto> findProducts(String name, int page, int size) {
+        List<Product> allProducts = fullH4rdScraperRepository.findByPage(PAGE_NAME);
+        String searchTerm = name.trim().toLowerCase();
+
+        List<Product> filteredProducts = allProducts.stream()
+                .filter(product -> product.getName() != null &&
+                        product.getName().trim().toLowerCase().contains(searchTerm))
                 .toList();
+
+        Pageable pageable = PageRequest.of(page, size);
+        int fromIndex = (int) pageable.getOffset();
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredProducts.size());
+
+        List<Product> pageContent = (fromIndex > filteredProducts.size())
+                ? List.of()
+                : filteredProducts.subList(fromIndex, toIndex);
+
+        return new PageImpl<>(this.convertToDto(pageContent), pageable, filteredProducts.size());
+    }
+
+    @Override
+    public Page<ProductResponseDto> findAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> productPage = fullH4rdScraperRepository.findByPage(PAGE_NAME, pageable);
+        return new PageImpl<>(this.convertToDto(productPage.getContent()), pageable, productPage.getTotalElements());
     }
 }

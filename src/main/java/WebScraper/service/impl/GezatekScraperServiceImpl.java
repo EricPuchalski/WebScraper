@@ -1,5 +1,7 @@
 package WebScraper.service.impl;
 
+import WebScraper.dto.ProductResponseDto;
+import WebScraper.mapper.ProductMapper;
 import WebScraper.model.PriceHistory;
 import WebScraper.model.Product;
 import WebScraper.repository.GezatekScraperRepository;
@@ -9,149 +11,162 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import java.util.Optional;
 
 @Service
 public class GezatekScraperServiceImpl implements GezatekScraperService {
     private static final Logger logger = Logger.getLogger(GezatekScraperServiceImpl.class.getName());
+    private static final String PAGE_NAME = "Gezatek";
+    private static final String BASE_URL = "https://www.gezatek.com.ar";
+    private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
+
     private final GezatekScraperRepository gezatekScraperRepository;
-    private final String baseUrl = "https://www.gezatek.com.ar";
-    private final String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
+    private final ProductMapper productMapper;
 
-
-    public GezatekScraperServiceImpl(GezatekScraperRepository gezatekScraperRepository) {
+    public GezatekScraperServiceImpl(GezatekScraperRepository gezatekScraperRepository, ProductMapper productMapper) {
         this.gezatekScraperRepository = gezatekScraperRepository;
-    }
+        this.productMapper = productMapper;
+}
 
     @Override
-    public List<Product> updateProducts() {
+    public List<ProductResponseDto> updateProducts() {
         List<Product> productList = new ArrayList<>();
         List<String> categories = GezatekUtils.getAllCategoryUrls();
 
         for (String url : categories) {
             try {
-                Document doc = Jsoup.connect(url)
-                        .userAgent(userAgent)
-                        .timeout(10000)
-                        .get();
+                Document doc = fetchDocument(url);
                 Elements products = doc.select(".product");
 
                 for (Element product : products) {
-                    String title = product.select("h2").text();
-                    String priceText = product.select("div > h3").text().substring(12);
-                    Double price = Double.valueOf(priceText);
-                    String imageUrl = product.select(".img-responsive").attr("src");
-                    String relativeProductUrl = product.select(".click").attr("href");
-                    String productUrl = baseUrl + relativeProductUrl;
-                    String page = "Gezatek";
-
-                    // Verificar si el producto ya existe en la base de datos
-                    Optional<Product> existingProduct = gezatekScraperRepository.findByProductUrl(productUrl);
-
-                    if (existingProduct.isPresent()) {
-                        Product productToUpdate = existingProduct.get();
-                        productToUpdate.setName(title);
-                        productToUpdate.setImageUrl(imageUrl);
-                        productToUpdate.setPage(page);
-
-                        // Verificar si el precio ha cambiado
-                        List<PriceHistory> priceHistory = productToUpdate.getPriceHistory();
-                        if (priceHistory.isEmpty() || !price.equals(priceHistory.get(priceHistory.size() - 1).getPrice())) {
-                            productToUpdate.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS")); // Agregar nuevo precio al historial
-                        }
-
-                        gezatekScraperRepository.save(productToUpdate);
-                        productList.add(productToUpdate);
-                    } else {
-                        // Insertar nuevo producto si no existe
-                        Product newProduct = new Product(title, imageUrl, productUrl, page);
-                        newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
-                        gezatekScraperRepository.save(newProduct);
-                        productList.add(newProduct);
-                    }
+                    processProductElement(product, productList);
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error en URL " + url, e);
             }
         }
-        return productList;
+
+        return convertToDto(productList);
     }
 
+    private Document fetchDocument(String url) throws IOException {
+        return Jsoup.connect(url)
+                .userAgent(USER_AGENT)
+                .timeout(10000)
+                .get();
+    }
+
+    private void processProductElement(Element product, List<Product> productList) {
+        try {
+            String title = product.select("h2").text();
+            Double price = extractPrice(product);
+            String imageUrl = product.select(".img-responsive").attr("src");
+            String productUrl = buildFullUrl(product.select(".click").attr("href"));
+
+            Optional<Product> existingProduct = gezatekScraperRepository.findByProductUrl(productUrl);
+
+            if (existingProduct.isPresent()) {
+                updateExistingProduct(existingProduct.get(), title, imageUrl, price, productList);
+            } else {
+                insertNewProduct(title, imageUrl, productUrl, price, productList);
+            }
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error procesando producto individual: " + e.getMessage(), e);
+        }
+    }
+
+    private Double extractPrice(Element product) {
+        String priceText = product.select("div > h3").text().substring(12);
+        return Double.valueOf(priceText);
+    }
+
+    private String buildFullUrl(String relativeUrl) {
+        return BASE_URL + (relativeUrl.startsWith("/") ? "" : "/") + relativeUrl;
+    }
+
+    private void updateExistingProduct(Product productToUpdate, String title, String imageUrl, Double price, List<Product> productList) {
+        productToUpdate.setName(title);
+        productToUpdate.setImageUrl(imageUrl);
+        productToUpdate.setPage(PAGE_NAME);
+
+        List<PriceHistory> priceHistory = productToUpdate.getPriceHistory();
+        if (priceHistory.isEmpty() || !price.equals(priceHistory.get(priceHistory.size() - 1).getPrice())) {
+            productToUpdate.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
+        }
+
+        gezatekScraperRepository.save(productToUpdate);
+        productList.add(productToUpdate);
+    }
+
+    private void insertNewProduct(String title, String imageUrl, String productUrl, Double price, List<Product> productList) {
+        Product newProduct = new Product(title, imageUrl, productUrl, PAGE_NAME);
+        newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
+        gezatekScraperRepository.save(newProduct);
+        productList.add(newProduct);
+    }
+
+    private List<ProductResponseDto> convertToDto(List<Product> productList) {
+        return productList.stream()
+                .map(productMapper::toDto)
+                .collect(Collectors.toList());
+    }
 
     @Override
-    public List<Product> findProducts(String name) {
+    public List<ProductResponseDto> findProducts(String name) {
         return gezatekScraperRepository.findAll().stream()
                 .filter(product -> product.getName().toLowerCase().contains(name.toLowerCase())
-                        && "gezatek".equalsIgnoreCase(product.getPage()))
-                .toList();
+                        && PAGE_NAME.equalsIgnoreCase(product.getPage()))
+                .map(productMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public List<Product> findAll() {
+    public List<ProductResponseDto> findAll() {
         return gezatekScraperRepository.findAll().stream()
-                .filter(product -> "gezatek".equalsIgnoreCase(product.getPage()))
-                .toList();
+                .filter(product -> PAGE_NAME.equalsIgnoreCase(product.getPage()))
+                .map(productMapper::toDto)
+                .collect(Collectors.toList());
     }
 
-    // REVISAR TODO ESTE CODIGO
-//    @Override
-//    public List<Product> findProducts(String name) {
-//        if (name == null || name.isEmpty()) {
-//            return gezatekScraperRepository.findAll();
-//        }
-//
-//        List<Product> results = new ArrayList<>();
-//        String searchTerm = name.toLowerCase();
-//
-//        for (Product product : gezatekScraperRepository.findAll()) {
-//            if (product.getName().toLowerCase().contains(searchTerm)) {
-//                results.add(product);
-//            }
-//        }
-//
-//        return results;
-//    }
-//
-//    /**
-//     * Método para actualizar productos solo de una categoría específica
-//     * @param category Nombre de la categoría
-//     * @return Lista de productos de esa categoría
-//     */
-//    public List<Product> updateProductsByCategory(String category) {
-//        List<Product> productList = new ArrayList<>();
-//        List<String> categoryUrls = GezatekUtils.getCategoryUrlsByType(category);
-//
-//        for (String url : categoryUrls) {
-//            try {
-//                Document doc = Jsoup.connect(url).get();
-//                Elements products = doc.select(".product");
-//
-//                for (Element product : products) {
-//                    if (!product.hasClass("sin-stock") && !product.html().contains("Sin Stock")) {
-//                        String title = product.select("h2").text();
-//                        String price = product.select("div > h3").text().substring(12);
-//                        String imageUrl = product.select(".img-responsive").attr("src");
-//                        String relativeProductUrl = product.select(".click").attr("href");
-//                        String productUrl = new URL(new URL(baseUrl), relativeProductUrl).toString();
-//
-//                        Product newProduct = new Product(title, Double.valueOf(price), imageUrl, productUrl);
-//                        productList.add(newProduct);
-//                        gezatekScraperRepository.save(newProduct);
-//                    }
-//                }
-//            } catch (Exception e) {
-//                logger.log(Level.SEVERE, "Error en URL " + url, e);
-//            }
-//        }
-//        return productList;
-//    }
+    public Page<ProductResponseDto> findProducts(String name, int page, int size) {
+        List<Product> allProducts = gezatekScraperRepository.findByPage(PAGE_NAME);
+        String searchTerm = name.trim().toLowerCase();
+
+        List<Product> filteredProducts = allProducts.stream()
+                .filter(product -> product.getName() != null &&
+                        product.getName().trim().toLowerCase().contains(searchTerm))
+                .toList();
+
+        Pageable pageable = PageRequest.of(page, size);
+        int fromIndex = (int) pageable.getOffset();
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), filteredProducts.size());
+
+        List<Product> pageContent = (fromIndex > filteredProducts.size())
+                ? List.of()
+                : filteredProducts.subList(fromIndex, toIndex);
+
+        return new PageImpl<>(convertToDto(pageContent), pageable, filteredProducts.size());
+    }
+
+    @Override
+    public Page<ProductResponseDto> findAll(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> productPage = gezatekScraperRepository.findByPage(PAGE_NAME, pageable);
+        return new PageImpl<>(convertToDto(productPage.getContent()), pageable, productPage.getTotalElements());
+    }
 }

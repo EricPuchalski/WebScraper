@@ -1,0 +1,10 @@
+spring:
+  port: 8081
+  application:
+    name: WebScraper
+
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: scraper

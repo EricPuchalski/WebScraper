@@ -1,4 +1,4 @@
-package WebScraperAPI.dto;
+package WebScraperAPI.dto.response;
 
 
 import lombok.*;

@@ -1,6 +1,6 @@
 package WebScraperAPI.mapper;
 
-import WebScraperAPI.dto.ProductResponseDto;
+import WebScraperAPI.dto.response.ProductResponseDto;
 import WebScraperAPI.model.Product;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

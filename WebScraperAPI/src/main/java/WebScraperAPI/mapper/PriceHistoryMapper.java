@@ -1,6 +1,6 @@
 package WebScraperAPI.mapper;
 
-import WebScraperAPI.dto.PriceHistoryResponseDto;
+import WebScraperAPI.dto.response.PriceHistoryResponseDto;
 import WebScraperAPI.model.PriceHistory;
 import org.springframework.stereotype.Component;
 

@@ -1,7 +1,7 @@
 package WebScraperAPI.service.impl;
 
 import WebScraperAPI.constant.ErrorMessages;
-import WebScraperAPI.dto.ProductResponseDto;
+import WebScraperAPI.dto.response.ProductResponseDto;
 import WebScraperAPI.exception.EntityNotFoundException;
 import WebScraperAPI.mapper.ProductMapper;
 import WebScraperAPI.model.Product;

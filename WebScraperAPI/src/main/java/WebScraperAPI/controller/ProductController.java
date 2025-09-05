@@ -1,9 +1,7 @@
 package WebScraperAPI.controller;
 
-import WebScraperAPI.dto.ProductResponseDto;
-import WebScraperAPI.model.Product;
+import WebScraperAPI.dto.response.ProductResponseDto;
 import WebScraperAPI.service.ProductService;
-import org.apache.coyote.Response;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

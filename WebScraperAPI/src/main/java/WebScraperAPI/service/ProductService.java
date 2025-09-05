@@ -1,6 +1,6 @@
 package WebScraperAPI.service;
 
-import WebScraperAPI.dto.ProductResponseDto;
+import WebScraperAPI.dto.response.ProductResponseDto;
 import org.springframework.data.domain.Page;
 
 public interface ProductService {

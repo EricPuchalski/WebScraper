@@ -1,0 +1,14 @@
+spring:
+  port: ${APP_PORT}
+  application:
+    name: WebScraper
+
+  data:
+    mongodb:
+      host: ${DB_HOST}
+      port: ${DB_PORT}
+      database: ${DB_NAME}
+scraper:
+  app:
+    jwtSecret: ${JWT_SECRET}
+    jwtExpirationMs: 86400000

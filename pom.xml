@@ -11,6 +11,7 @@
 	<modules>
 		<module>WebScraper</module>
 		<module>WebScraperAPI</module>
+		<module>WebScraperNotification</module>
 	</modules>
 
 	<properties>

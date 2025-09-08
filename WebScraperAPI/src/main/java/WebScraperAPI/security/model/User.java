@@ -1,14 +1,10 @@
 package WebScraperAPI.security.model;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 
-import java.util.HashSet;
-import java.util.Set;
+
 
 @Document(collection = "users")
 public class User {
@@ -16,25 +12,21 @@ public class User {
     @Id
     private String id;
 
-    @NotBlank
-    @Size(max = 20)
     private String username;
-
-    @NotBlank
-    @Size(max = 50)
-    @Email
     private String email;
-
-    @NotBlank
-    @Size(max = 120)
     private String password;
-
-    @NotBlank
-    @Size(max = 30)
     private String dni;
 
     @DBRef
-    private Set<Role> roles = new HashSet<>();
+    private Role role;
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
 
     public User() {}
 
@@ -61,6 +53,5 @@ public class User {
     public String getDni() { return dni; }
     public void setDni(String dni) { this.dni = dni; }
 
-    public Set<Role> getRoles() { return roles; }
-    public void setRoles(Set<Role> roles) { this.roles = roles; }
+
 }

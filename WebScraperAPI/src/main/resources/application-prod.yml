@@ -10,5 +10,5 @@ spring:
       database: ${DB_NAME}
 scraper:
   app:
-    jwtSecret: mySecretKey
+    jwtSecret: ${JWT_SECRET}
     jwtExpirationMs: 86400000

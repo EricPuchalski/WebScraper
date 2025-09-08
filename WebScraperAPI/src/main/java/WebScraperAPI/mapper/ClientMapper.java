@@ -7,26 +7,25 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ClientMapper {
-    public Client toEntity(ClientRequestDto dto) {
-        if (dto == null) return null;
-        Client client = new Client();
-        client.setDni(dto.dni());
-        client.setName(dto.name());
-        client.setLastName(dto.lastName());
-        client.setEmail(dto.email());
-        return client;
+
+    public Client toEntity(ClientRequestDto req) {
+        return Client.builder()
+                .userId(req.getUserId())
+                .dni(req.getDni())
+                .name(req.getName())
+                .lastName(req.getLastName())
+                .build();
     }
 
-    public ClientResponseDto toResponseDto(Client client) {
-        if (client == null) return null;
-        return new ClientResponseDto(
-                client.getId(),
-                client.getDni(),
-                client.getName(),
-                client.getLastName(),
-                client.getEmail(),
-                client.getCreatedAt(),
-                client.getUpdatedAt()
-        );
+    public ClientResponseDto toResponse(Client c) {
+        return ClientResponseDto.builder()
+                .id(c.getId())
+                .userId(c.getUserId())
+                .dni(c.getDni())
+                .name(c.getName())
+                .lastName(c.getLastName())
+                .createdAt(c.getCreatedAt())
+                .updatedAt(c.getUpdatedAt())
+                .build();
     }
 }

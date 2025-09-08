@@ -1,19 +1,18 @@
 package WebScraperAPI.dto.request;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import lombok.Data;
 
-public record ClientRequestDto(
-        @NotBlank @Size(max = 30)
-        String dni,
+@Data
+public class ClientRequestDto {
+        @NotBlank
+        private String userId;
 
-        @NotBlank @Size(max = 50)
-        String name,
+        private String dni;
 
-        @NotBlank @Size(max = 50)
-        String lastName,
+        @NotBlank
+        private String name;
 
-        @NotBlank @Email @Size(max = 100)
-        String email
-) {}
+        @NotBlank
+        private String lastName;
+}

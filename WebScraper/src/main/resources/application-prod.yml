@@ -2,9 +2,13 @@ spring:
   port: 8081
   application:
     name: WebScraper
-
   data:
     mongodb:
       host: localhost
       port: 27017
       database: scraper
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer

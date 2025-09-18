@@ -10,4 +10,6 @@ public interface FavoriteRepository extends MongoRepository<Favorite, String> {
     List<Favorite> findByClientId(String clientId);
     boolean existsByClientIdAndProductId(String clientId, String productId);
     void deleteByClientIdAndProductId(String clientId, String productId);
+
+    List<Favorite> findByProductId(String productId);
 }

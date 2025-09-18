@@ -1,5 +1,5 @@
 spring:
-  port: ${APP_PORT}
+  port: ${SERVER_PORT}
   application:
     name: WebScraper
 
@@ -8,7 +8,13 @@ spring:
       host: ${DB_HOST}
       port: ${DB_PORT}
       database: ${DB_NAME}
-scraper:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: price-drop-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
   app:
     jwtSecret: ${JWT_SECRET}
     jwtExpirationMs: 86400000

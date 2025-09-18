@@ -17,12 +17,12 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<Page<ProductResponseDto>> findAllProducts(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "0") int pageNumber,
             @RequestParam(defaultValue = "21") int size,
             @RequestParam(defaultValue = "") String market,
             @RequestParam(defaultValue = "") String search,
             @RequestParam(defaultValue = "name") String sortBy) {
-        Page<ProductResponseDto> products = productService.getAllProductsAndName(page, size, sortBy, market, search);
+        Page<ProductResponseDto> products = productService.getAllProductsAndName(pageNumber, size, sortBy, market, search);
         return ResponseEntity.ok(products);
     }
 

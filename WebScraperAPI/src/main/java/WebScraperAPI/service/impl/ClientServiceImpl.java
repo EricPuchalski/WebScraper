@@ -1,11 +1,10 @@
 package WebScraperAPI.service.impl;
 
+import WebScraperAPI.dto.request.ClientRequestDto;
 import WebScraperAPI.dto.response.ClientResponseDto;
 import WebScraperAPI.mapper.ClientMapper;
 import WebScraperAPI.model.Client;
-import WebScraperAPI.security.model.User;
 import WebScraperAPI.repository.ClientRepository;
-import WebScraperAPI.security.repository.UserRepository;
 import WebScraperAPI.service.ClientService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,31 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ClientServiceImpl implements ClientService {
 
-    private final UserRepository userRepository;
     private final ClientMapper mapper;
     private final ClientRepository clientRepository;
 
-    public ClientServiceImpl(UserRepository userRepository, ClientMapper mapper, ClientRepository clientRepository) {
-        this.userRepository = userRepository;
+    public ClientServiceImpl( ClientMapper mapper, ClientRepository clientRepository) {
         this.mapper = mapper;
         this.clientRepository = clientRepository;
     }
 
     @Override
     @Transactional
-    public ClientResponseDto createClientForUser(String id, String dni, String name, String lastName) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-        if (clientRepository.existsByUserId(user.getId())) {
-            throw new IllegalStateException("Client profile already exists");
-        }
+    public ClientResponseDto createClientForUser(ClientRequestDto request) {
 
         Client entity = Client.builder()
-                .userId(user.getId())
-                .dni(dni)
-                .name(name)
-                .lastName(lastName)
+                .userId(request.getUserId())
+                .dni(request.getDni())
+                .name(request.getName())
+                .lastName(request.getLastName())
                 .build();
 
         Client saved = clientRepository.save(entity);

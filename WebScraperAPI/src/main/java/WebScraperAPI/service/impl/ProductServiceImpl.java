@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -27,19 +28,28 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ProductResponseDto> getAllProductsAndName(int page, int size, String sortBy, String market, String search) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).ascending());
-        Page<Product> result;
+    public Page<ProductResponseDto> getAllProductsAndName(int pageNumber, int size, String sortBy, String market, String search) {
+        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(sortBy).ascending());
 
-        if (!search.isEmpty()) {
-            result = productRepository.findByPageIgnoreCaseAndNameContainingIgnoreCase(
-                    market.trim(), search.trim(), pageable);
-        } else {
-            result = productRepository.findAll(pageable);
-        }
+        boolean hasMarket = StringUtils.hasText(market);
+        boolean hasSearch = StringUtils.hasText(search);
+
+        Page<Product> result = findProducts(hasMarket, hasSearch, market, search, pageable);
         return result.map(mapper::toDto);
     }
 
+    private Page<Product> findProducts(boolean hasMarket, boolean hasSearch, String market, String search, Pageable pageable) {
+        if (hasMarket && hasSearch) {
+            return productRepository.findByPageIgnoreCaseAndNameContainingIgnoreCase(market.trim(), search.trim(), pageable);
+        }
+        if (hasMarket) {
+            return productRepository.findByPageIgnoreCase(market.trim(), pageable);
+        }
+        if (hasSearch) {
+            return productRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
+        }
+        return productRepository.findAll(pageable);
+    }
     @Override
     @Transactional(readOnly = true)
     public ProductResponseDto getProductById(String id) {

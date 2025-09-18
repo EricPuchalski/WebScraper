@@ -1,10 +1,13 @@
 package WebScraperAPI.service.impl;
 
+import WebScraperAPI.dto.response.ClientResponseDto;
 import WebScraperAPI.dto.response.FavoriteResponseDto;
+import WebScraperAPI.mapper.ClientMapper;
 import WebScraperAPI.mapper.FavoriteMapper;
 import WebScraperAPI.model.Client;
 import WebScraperAPI.model.Favorite;
 import WebScraperAPI.model.Product;
+import WebScraperAPI.repository.ClientRepository;
 import WebScraperAPI.repository.FavoriteRepository;
 import WebScraperAPI.repository.ProductRepository;
 import WebScraperAPI.service.ClientService;
@@ -14,8 +17,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -25,12 +30,16 @@ public class FavoriteServiceImpl implements FavoriteService {
     private final ProductRepository productRepository;
     private final FavoriteRepository favoriteRepository;
     private final FavoriteMapper favoriteMapper;
+    private final ClientRepository clientRepository;
+    private final ClientMapper clientMapper;
 
-    public FavoriteServiceImpl(ClientService clientService, ProductRepository productRepository, FavoriteRepository favoriteRepository, FavoriteMapper favoriteMapper) {
+    public FavoriteServiceImpl(ClientService clientService, ProductRepository productRepository, FavoriteRepository favoriteRepository, FavoriteMapper favoriteMapper, ClientRepository clientRepository, ClientMapper clientMapper) {
         this.clientService = clientService;
         this.productRepository = productRepository;
         this.favoriteRepository = favoriteRepository;
         this.favoriteMapper = favoriteMapper;
+        this.clientRepository = clientRepository;
+        this.clientMapper = clientMapper;
     }
 
     @Transactional
@@ -81,5 +90,26 @@ public class FavoriteServiceImpl implements FavoriteService {
                     return favoriteMapper.toResponseDto(fav, name, clientDni);
                 })
                 .toList();
+    }
+
+    @Override
+    public List<ClientResponseDto> listClientsWhoFavedProduct(String productId) {
+        // 1) Todos los favoritos para ese producto
+        List<Favorite> favs = favoriteRepository.findByProductId(productId);
+        if (favs.isEmpty()) return List.of();
+
+        // 2) Traer clientes por sus IDs en bloque
+        List<String> clientIds = favs.stream()
+                .map(Favorite::getClientId)
+                .distinct()
+                .toList();
+
+        List<Client> clientsById = new ArrayList<>(clientRepository.findAllById(clientIds));
+
+        return clientsById
+                .stream()
+                .map(clientMapper::toResponse)
+                .toList();
+
     }
 }

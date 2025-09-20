@@ -3,6 +3,8 @@ package WebScraper.service.impl;
 import WebScraper.constant.CssSelectorsMessages;
 import WebScraper.constant.ScraperMessages;
 import WebScraper.dto.ProductResponseDto;
+import WebScraper.event.dto.PriceDropDetectedEvent;
+import WebScraper.event.producer.PriceDropPublisher;
 import WebScraper.mapper.ProductMapper;
 import WebScraper.model.PriceHistory;
 import WebScraper.model.Product;
@@ -13,21 +15,15 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.time.ZoneId;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-
 import java.util.Optional;
 
 @Service
@@ -36,16 +32,21 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
 
     private final GezatekScraperRepository gezatekScraperRepository;
     private final ProductMapper productMapper;
+    private final PriceDropPublisher priceDropPublisher;
 
-    public GezatekScraperServiceImpl(GezatekScraperRepository gezatekScraperRepository, ProductMapper productMapper) {
+    public GezatekScraperServiceImpl(GezatekScraperRepository gezatekScraperRepository, ProductMapper productMapper, PriceDropPublisher priceDropPublisher) {
         this.gezatekScraperRepository = gezatekScraperRepository;
         this.productMapper = productMapper;
-}
+        this.priceDropPublisher = priceDropPublisher;
+    }
 
     @Override
     public List<ProductResponseDto> updateProducts() {
         List<Product> productList = new ArrayList<>();
         List<String> categories = GezatekUtils.getAllCategoryUrls();
+
+        final LocalDateTime now = LocalDateTime.now();
+        final Set<String> seenUrls = new HashSet<>();
 
         for (String url : categories) {
             try {
@@ -53,15 +54,19 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
                 Elements products = doc.select(CssSelectorsMessages.GEZATEK_PRODUCT_LIST);
 
                 for (Element product : products) {
-                    processProductElement(product, productList);
+                    processProductElement(product, productList, seenUrls, now);
                 }
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Error en URL " + url, e);
             }
         }
 
-        return convertToDto(productList);
+        //  desactivar los que no se vieron en esta corrida
+        this.deactivateNoStockProducts(seenUrls);
+
+        return productMapper.convertToListDto(productList);
     }
+
 
     private Document fetchDocument(String url) throws IOException {
         return Jsoup.connect(url)
@@ -70,19 +75,44 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
                 .get();
     }
 
-    private void processProductElement(Element product, List<Product> productList) {
+    private void deactivateNoStockProducts(Set<String> urls){
+        LocalDateTime now = LocalDateTime.now();
+        if (!urls.isEmpty()) {
+            List<Product> actives = gezatekScraperRepository.findAllByPageAndActiveTrue(ScraperMessages.PAGE_GEZATEK);
+            List<Product> toDeactivate = new ArrayList<>();
+            for (Product p : actives) {
+                String url = p.getProductUrl();
+                if (url == null || !urls.contains(url)) {
+                    p.setActive(false);
+                    p.setLastDeactivationDate(now);
+                    toDeactivate.add(p);
+                }
+            }
+            if (!toDeactivate.isEmpty()) {
+                gezatekScraperRepository.saveAll(toDeactivate);
+            }
+        }
+    }
+
+    private void processProductElement(Element product, List<Product> productList,
+                                       Set<String> seenUrls, LocalDateTime now) {
         try {
             String title = product.select(CssSelectorsMessages.GEZATEK_TITLE).text();
             Double price = extractPrice(product);
             String imageUrl = product.select(CssSelectorsMessages.GEZATEK_IMAGE).attr("src");
             String productUrl = buildFullUrl(product.select(CssSelectorsMessages.GEZATEK_LINK).attr("href"));
 
+            if (productUrl.isBlank()) return;
+
+            //  marcar como visto
+            seenUrls.add(productUrl);
+
             Optional<Product> existingProduct = gezatekScraperRepository.findByProductUrl(productUrl);
 
             if (existingProduct.isPresent()) {
-                updateExistingProduct(existingProduct.get(), title, imageUrl, price, productList);
+                updateExistingProduct(existingProduct.get(), title, imageUrl, price, productList, now);
             } else {
-                insertNewProduct(title, imageUrl, productUrl, price, productList);
+                insertNewProduct(title, imageUrl, productUrl, price, productList, now);
             }
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error procesando producto individual: " + e.getMessage(), e);
@@ -98,31 +128,87 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
         return ScraperMessages.BASE_URL_GEZATEK + (relativeUrl.startsWith("/") ? "" : "/") + relativeUrl;
     }
 
-    private void updateExistingProduct(Product productToUpdate, String title, String imageUrl, Double price, List<Product> productList) {
-        productToUpdate.setName(title);
-        productToUpdate.setImageUrl(imageUrl);
-        productToUpdate.setPage(ScraperMessages.PAGE_GEZATEK);
+    private void updateExistingProduct(Product p, String title, String imageUrl, Double price,
+                                       List<Product> productList, LocalDateTime now) {
+        p.setName(title);
+        p.setImageUrl(imageUrl);
+        p.setPage(ScraperMessages.PAGE_GEZATEK);
 
-        List<PriceHistory> priceHistory = productToUpdate.getPriceHistory();
-        if (priceHistory.isEmpty() || !price.equals(priceHistory.get(priceHistory.size() - 1).getPrice())) {
-            productToUpdate.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
+        // reactivar si estaba inactivo
+        if (!p.isActive()) {
+            p.setActive(true);
+            p.setLastActivationDate(now);
         }
 
-        gezatekScraperRepository.save(productToUpdate);
-        productList.add(productToUpdate);
+        List<PriceHistory> ph = p.getPriceHistory();
+        Double last = (ph.isEmpty() ? null : ph.get(ph.size() - 1).getPrice());
+
+        // publicar SOLO si bajó
+        publishIfPriceDropped(p, last, price);
+
+        // actualizar historial si cambió
+        if (last == null || !last.equals(price)) {
+            this.updatePrice(p, price);
+        }
+
+        gezatekScraperRepository.save(p);
+        productList.add(p);
     }
 
-    private void insertNewProduct(String title, String imageUrl, String productUrl, Double price, List<Product> productList) {
-        Product newProduct = new Product(title, imageUrl, productUrl, ScraperMessages.PAGE_GEZATEK);
-        newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "ARS"));
-        gezatekScraperRepository.save(newProduct);
-        productList.add(newProduct);
+
+    private void insertNewProduct(String title, String imageUrl, String productUrl, Double price,
+                                  List<Product> productList, LocalDateTime now) {
+
+        Product nProduct = this.buildProduct(title, imageUrl, productUrl, price);
+
+        nProduct.setActive(true);
+        nProduct.setLastActivationDate(now);
+        nProduct.setDate(now);
+        nProduct.setPrice(price);
+
+        gezatekScraperRepository.save(nProduct);
+        productList.add(nProduct);
     }
 
-    private List<ProductResponseDto> convertToDto(List<Product> productList) {
-        return productList.stream()
-                .map(productMapper::toDto)
-                .collect(Collectors.toList());
+    private void publishIfPriceDropped(Product p, Double lastPrice, Double newPrice) {
+        if (lastPrice != null && newPrice < lastPrice) {
+            priceDropPublisher.publish(PriceDropDetectedEvent.builder()
+                    .eventId(UUID.randomUUID().toString())
+                    .productId(p.getId())
+                    .detectedAt(Instant.now().atZone(ZoneId.systemDefault()).toInstant())
+                    .build(
+                    ));
+        }
     }
 
+    private Product buildProduct(String title, String imageUrl, String productUrl, Double price){
+        Product nProduct = Product.builder()
+                .name(title)
+                .imageUrl(imageUrl)
+                .productUrl(productUrl)
+                .page(ScraperMessages.PAGE_GEZATEK)
+                .build();
+
+        nProduct.getPriceHistory().add(
+                PriceHistory.builder()
+                        .price(price)
+                        .date(LocalDateTime.now())
+                        .currency(ScraperMessages.CURRENCY_ARS)
+                        .build());
+
+        return nProduct;
+
+    }
+
+    private void updatePrice(Product p, Double price){
+        p.getPriceHistory().add(
+                PriceHistory
+                        .builder()
+                        .price(price)
+                        .date(LocalDateTime.now())
+                        .currency(ScraperMessages.CURRENCY_ARS)
+                        .build()
+        );
+        p.setPrice(price);
+    }
 }

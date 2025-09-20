@@ -3,7 +3,8 @@ package WebScraper.service.impl;
 import WebScraper.constant.CssSelectorsMessages;
 import WebScraper.constant.ScraperMessages;
 import WebScraper.dto.ProductResponseDto;
-import WebScraper.event.PriceDropEvent;
+import WebScraper.event.dto.PriceDropDetectedEvent;
+import WebScraper.event.producer.PriceDropPublisher;
 import WebScraper.mapper.ProductMapper;
 import WebScraper.model.PriceHistory;
 import WebScraper.model.Product;
@@ -17,7 +18,9 @@ import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,7 +41,6 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
 
     @Override
     public List<ProductResponseDto> updateProducts() {
-        final String PAGE = ScraperMessages.PAGE_FULLH4RD;
         final LocalDateTime now = LocalDateTime.now();
 
         List<Product> collected = new ArrayList<>();
@@ -54,12 +56,20 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
         }
 
         // Desactivar productos activos de esta page que NO se vieron en esta corrida
-        if (!seenUrls.isEmpty()) {
-            List<Product> activos = repo.findAllByPageAndActiveTrue(PAGE);
+       this.deactivateNoStockProducts(seenUrls);
+
+        return collected.stream().map(mapper::toDto).collect(Collectors.toList());
+    }
+
+
+    private void deactivateNoStockProducts(Set<String> urls){
+        LocalDateTime now = LocalDateTime.now();
+        if (!urls.isEmpty()) {
+            List<Product> actives = repo.findAllByPageAndActiveTrue(ScraperMessages.PAGE_FULLH4RD);
             List<Product> toDeactivate = new ArrayList<>();
-            for (Product p : activos) {
+            for (Product p : actives) {
                 String url = p.getProductUrl();
-                if (url == null || !seenUrls.contains(url)) {
+                if (url == null || !urls.contains(url)) {
                     p.setActive(false);
                     p.setLastDeactivationDate(now);
                     toDeactivate.add(p);
@@ -69,10 +79,7 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
                 repo.saveAll(toDeactivate);
             }
         }
-
-        return collected.stream().map(mapper::toDto).collect(Collectors.toList());
     }
-
     /** Pagina una categoría y acumula productos */
     private List<Product> scrapeCategory(String categoryUrl, Set<String> seenUrls, LocalDateTime now) throws IOException {
         List<Product> acc = new ArrayList<>();
@@ -118,11 +125,7 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
 
         Optional<Product> existing = repo.findByProductUrl(productUrl);
         Product saved;
-        if (existing.isPresent()) {
-            saved = updateExistingProduct(existing.get(), title, imageUrl, price, now);
-        } else {
-            saved = insertNewProduct(title, imageUrl, productUrl, price, now);
-        }
+        saved = existing.map(product -> updateExistingProduct(product, title, imageUrl, price, now)).orElseGet(() -> insertNewProduct(title, imageUrl, productUrl, price, now));
         return Optional.of(repo.save(saved));
     }
 
@@ -158,30 +161,21 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
         Double last = (ph.isEmpty() ? null : ph.get(ph.size() - 1).getPrice());
 
         // PUBLICAR SOLO SI BAJÓ
-        if (last != null && price < last) {
-            priceDropPublisher.publish(new PriceDropEvent(
-                    UUID.randomUUID().toString(),
-                    p.getId(),                 // productId
-                    p.getName(),               // nombre
-                    last,                      // oldPrice
-                    price,                     // newPrice
-                    System.currentTimeMillis() // ts
-            ));
-        }
+        this.publishIfPriceDropped(p, last, price);
 
         // Actualizar historial si cambió
         if (last == null || !last.equals(price)) {
-            ph.add(new PriceHistory(price, now, "ARS"));
-            p.setPrice(price);
+         this.updatePriceHistory(ph, p, price, now);
         }
         return p;
     }
 
     private Product insertNewProduct(String title, String imageUrl, String productUrl, Double price, LocalDateTime now) {
         Product p = new Product(title, imageUrl, productUrl, ScraperMessages.PAGE_FULLH4RD);
-        p.getPriceHistory().add(new PriceHistory(price, now, "ARS"));
+        p.getPriceHistory().add(new PriceHistory(price, now, ScraperMessages.CURRENCY_ARS));
 
-        // Nuevo → activo y con fecha de activación (y fecha de inserción si la usás)
+        // Nuevo → activo y con fecha de activación
+
         p.setActive(true);
         p.setLastActivationDate(now);
         p.setDate(now);
@@ -197,4 +191,25 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
     private String buildFullUrl(String relativeUrl) {
         return ScraperMessages.BASE_URL_FULLH4RD + (relativeUrl.startsWith("/") ? "" : "/") + relativeUrl;
     }
+
+    private void publishIfPriceDropped(Product p, Double lastPrice, Double newPrice) {
+        if (lastPrice != null && newPrice < lastPrice) {
+            priceDropPublisher.publish(PriceDropDetectedEvent.builder()
+                    .eventId(UUID.randomUUID().toString())
+                    .productId(p.getId())
+                    .detectedAt(Instant.now().atZone(ZoneId.systemDefault()).toInstant())
+                    .build(
+                    ));
+        }
+    }
+
+    private void updatePriceHistory(List<PriceHistory> ph, Product p, Double price, LocalDateTime now){
+        ph.add(PriceHistory.builder()
+                .price(price)
+                .currency(ScraperMessages.CURRENCY_ARS)
+                .date(now)
+                .build());
+        p.setPrice(price);
+    }
+
 }

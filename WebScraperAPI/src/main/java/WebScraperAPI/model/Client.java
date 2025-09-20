@@ -28,6 +28,7 @@ public class Client {
     private String name;
     private String lastName;
 
+    private String email;
     @CreatedDate
     private LocalDateTime createdAt;
     @LastModifiedDate

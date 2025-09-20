@@ -9,6 +9,7 @@ public class ClientRequestDto {
         private String userId;
 
         private String dni;
+        private String email;
 
         @NotBlank
         private String name;

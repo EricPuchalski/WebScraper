@@ -13,6 +13,7 @@ public class ClientMapper {
                 .userId(req.getUserId())
                 .dni(req.getDni())
                 .name(req.getName())
+                .email(req.getEmail())
                 .lastName(req.getLastName())
                 .build();
     }
@@ -24,6 +25,7 @@ public class ClientMapper {
                 .dni(c.getDni())
                 .name(c.getName())
                 .lastName(c.getLastName())
+                .email(c.getEmail())
                 .createdAt(c.getCreatedAt())
                 .updatedAt(c.getUpdatedAt())
                 .build();

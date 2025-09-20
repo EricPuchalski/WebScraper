@@ -97,6 +97,7 @@ public class AuthController {
                             .userId(user.getId())
                             .name(signUpRequest.getName())
                             .lastName(signUpRequest.getLastName())
+                            .email(signUpRequest.getEmail())
                             .build()
             );
         }

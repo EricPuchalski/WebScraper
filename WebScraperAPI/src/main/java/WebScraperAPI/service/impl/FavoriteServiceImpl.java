@@ -95,7 +95,11 @@ public class FavoriteServiceImpl implements FavoriteService {
     @Override
     public List<ClientResponseDto> listClientsWhoFavedProduct(String productId) {
         // 1) Todos los favoritos para ese producto
+        log.info("Listing clients who favorited product {}", productId);
+
         List<Favorite> favs = favoriteRepository.findByProductId(productId);
+
+        log.info("Found {} favorites for product {}", favs.size(), productId);
         if (favs.isEmpty()) return List.of();
 
         // 2) Traer clientes por sus IDs en bloque
@@ -103,6 +107,8 @@ public class FavoriteServiceImpl implements FavoriteService {
                 .map(Favorite::getClientId)
                 .distinct()
                 .toList();
+
+        log.info("Found {} clients who favorited product {}", clientIds.size(), productId);
 
         List<Client> clientsById = new ArrayList<>(clientRepository.findAllById(clientIds));
 

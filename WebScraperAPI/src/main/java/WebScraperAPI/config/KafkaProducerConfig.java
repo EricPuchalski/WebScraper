@@ -1,6 +1,6 @@
-package WebScraper.config;
+package WebScraperAPI.config;
 
-import WebScraper.event.dto.PriceDropDetectedEvent;
+import WebScraperAPI.event.dto.PriceDropNotificationEvent;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.context.annotation.Bean;
@@ -14,7 +14,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-public class KafkaConfig {
+public class KafkaProducerConfig {
+
     @Bean
     public ProducerFactory<String, String> stringProducerFactory() {
         Map<String, Object> config = new HashMap<>();

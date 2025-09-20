@@ -2,14 +2,13 @@ package WebScraperAPI.repository;
 
 import WebScraperAPI.model.Favorite;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
+@Repository
 public interface FavoriteRepository extends MongoRepository<Favorite, String> {
     List<Favorite> findByClientId(String clientId);
-    boolean existsByClientIdAndProductId(String clientId, String productId);
     void deleteByClientIdAndProductId(String clientId, String productId);
-
     List<Favorite> findByProductId(String productId);
 }

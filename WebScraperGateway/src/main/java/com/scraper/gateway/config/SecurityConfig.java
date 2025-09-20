@@ -15,7 +15,10 @@ public class SecurityConfig {
     http
       .csrf(ServerHttpSecurity.CsrfSpec::disable)
       .authorizeExchange(ex -> ex
-        .pathMatchers(HttpMethod.POST, "/api/v1/clients").permitAll()
+        .pathMatchers("/api/v1/clients").permitAll()
+              .pathMatchers("api/v1/scraper/**").permitAll()
+              .pathMatchers("api/v1/products/**").permitAll()
+              .pathMatchers("api/v1/favorites/**").permitAll()
         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
               .pathMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
               .anyExchange().authenticated()

@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor @AllArgsConstructor
 public class CreateClientRequest {
     private String userId;
+    private String email;
     private String dni;
     private String name;
     private String lastName;

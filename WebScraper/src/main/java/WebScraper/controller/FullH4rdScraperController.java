@@ -2,7 +2,6 @@ package WebScraper.controller;
 
 import WebScraper.dto.ProductResponseDto;
 import WebScraper.service.FullH4rdScraperService;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

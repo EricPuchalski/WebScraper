@@ -2,7 +2,17 @@ spring:
   port: ${APP_PORT}
   application:
     name: WebScraper
-
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: price-drop-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      bootstrap-servers: localhost:9092
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
   data:
     mongodb:
       host: ${DB_HOST}
@@ -12,3 +22,4 @@ scraper:
   app:
     jwtSecret: ${JWT_SECRET}
     jwtExpirationMs: 86400000
+

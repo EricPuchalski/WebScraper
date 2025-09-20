@@ -24,13 +24,7 @@ public class ClientServiceImpl implements ClientService {
     @Transactional
     public ClientResponseDto createClientForUser(ClientRequestDto request) {
 
-        Client entity = Client.builder()
-                .userId(request.getUserId())
-                .dni(request.getDni())
-                .name(request.getName())
-                .lastName(request.getLastName())
-                .build();
-
+        Client entity = mapper.toEntity(request);
         Client saved = clientRepository.save(entity);
         return mapper.toResponse(saved);
     }

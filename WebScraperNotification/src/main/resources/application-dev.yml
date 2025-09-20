@@ -1,0 +1,36 @@
+spring:
+  port: ${SERVER_PORT}
+  application:
+    name: WebScraper
+  # Configuración de JavaMail
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+        debug: ${MAIL_DEBUG:false}
+  data:
+    mongodb:
+      host: ${DB_HOST}
+      port: ${DB_PORT}
+      database: ${DB_NAME}
+    kafka:
+      bootstrap-servers: localhost:9092
+      consumer:
+        group-id: price-drop-notifier
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  app:
+    jwtSecret: ${JWT_SECRET}
+    jwtExpirationMs: 86400000

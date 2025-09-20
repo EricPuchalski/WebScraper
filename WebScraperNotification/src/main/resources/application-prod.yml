@@ -1,0 +1,22 @@
+spring:
+  port: ${APP_PORT}
+  application:
+    name: WebScraper
+
+  data:
+    mongodb:
+      host: ${DB_HOST}
+      port: ${DB_PORT}
+      database: ${DB_NAME}
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    consumer:
+      group-id: price-drop-notifier
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+scraper:
+  app:
+    jwtSecret: ${JWT_SECRET}
+    jwtExpirationMs: 86400000

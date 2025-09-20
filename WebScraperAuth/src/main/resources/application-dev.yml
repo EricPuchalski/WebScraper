@@ -1,0 +1,16 @@
+server:
+  port: ${APP_PORT:8086}
+
+spring:
+  application:
+    name: WebScraperAuth
+
+  data:
+    mongodb:
+      host: ${DB_HOST:localhost}
+      port: ${DB_PORT:27017}
+      database: ${DB_NAME:scraper}
+scraper:
+  app:
+    jwtSecret: ${JWT_SECRET:I0VUlXH1lI/PeEsNmAtNYyx6iJHbEc/6qglVEYhzCYdPGs21saO3haazFF0UInCaHQ0VI8i9FyhxPpseyvKgzg==}
+    jwtExpirationMs: 86400000

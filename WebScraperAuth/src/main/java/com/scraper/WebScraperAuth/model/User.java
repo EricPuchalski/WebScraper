@@ -15,7 +15,6 @@ public class User {
     private String username;
     private String email;
     private String password;
-    private String dni;
 
     @DBRef
     private Role role;
@@ -30,11 +29,10 @@ public class User {
 
     public User() {}
 
-    public User(String username, String email, String password, String dni) {
+    public User(String username, String email, String password) {
         this.username = username;
         this.email = email;
         this.password = password;
-        this.dni = dni;
     }
 
     // getters & setters
@@ -49,9 +47,6 @@ public class User {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
-
-    public String getDni() { return dni; }
-    public void setDni(String dni) { this.dni = dni; }
 
 
 }

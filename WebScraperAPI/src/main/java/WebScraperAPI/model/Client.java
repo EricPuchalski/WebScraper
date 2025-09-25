@@ -23,8 +23,6 @@ public class Client {
     @Indexed(unique = true)
     private String userId;
 
-    private String dni;
-
     private String name;
     private String lastName;
 

@@ -19,8 +19,10 @@ public class Product {
     @Id
     private String id;
     private String name;
+    private String pageLogoUrl;
     private List<PriceHistory> priceHistory;
     private String imageUrl;
+    private Boolean hasPriceDropped;
     private String productUrl;
     private String page;
     private Double price;

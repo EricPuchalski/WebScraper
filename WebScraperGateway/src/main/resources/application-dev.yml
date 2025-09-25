@@ -7,37 +7,51 @@ spring:
 
   cloud:
     gateway:
-      server:
-        webflux:
-          globalcors:
-            cors-configurations:
-              '[/**]':
-                allowed-origins: "http://localhost:5173,http://localhost:3000"
-                allowed-methods: "*"
-                allowed-headers: "*"
-                allow-credentials: true
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:5173"
+              - "http://localhost:3000"
+            allowed-origin-patterns:
+              - "https://*.ngrok-free.app"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowed-headers:
+              - "*"
+            exposed-headers:
+              - "*"
+            allow-credentials: true
+            max-age: 3600
 
-          default-filters:
-            - RemoveRequestHeader=X-User-*,X-Role-*
-            - PreserveHostHeader
+      default-filters:
+        # ⚠️ NO remover headers CORS aquí
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Allow-Headers Access-Control-Allow-Methods Vary, RETAIN_FIRST
+        - RemoveRequestHeader=X-User-*,X-Role-*
+        - PreserveHostHeader
 
-          routes:
-            - id: scraper-api
-              uri: http://localhost:8081
-              predicates:
-                - Path=/api/v1/products/**,/api/v1/clients/**,/api/v1/favorites/**
+      routes:
+        - id: scraper-api
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/v1/products/**,/api/v1/clients/**,/api/v1/favorites/**
 
-            - id: user-service
-              uri: http://localhost:8083
-              predicates:
-                - Path=/api/v1/users/**
+        - id: user-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/v1/users/**
 
-            - id: auth-service
-              uri: http://localhost:8086
-              predicates:
-                - Path=/api/v1/auth/**
+        - id: auth-service
+          uri: http://localhost:8086
+          predicates:
+            - Path=/api/v1/auth/**
 
-            - id: scraper-service
-              uri: http://localhost:8085
-              predicates:
-                - Path=/api/v1/scraper/**
+        - id: scraper-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/api/v1/scraper/**

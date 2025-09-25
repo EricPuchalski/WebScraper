@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @Slf4j
 @RequestMapping("api/v1/auth")
@@ -64,15 +63,11 @@ public class AuthController {
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
         }
-        if (signUpRequest.getDni() != null && userRepository.existsByDni(signUpRequest.getDni())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: dni is already in use!"));
-        }
 
         User user = new User(
                 signUpRequest.getUsername(),
                 signUpRequest.getEmail(),
-                encoder.encode(signUpRequest.getPassword()),
-                signUpRequest.getDni()
+                encoder.encode(signUpRequest.getPassword())
         );
 
         String rawRole = signUpRequest.getRole();
@@ -92,8 +87,7 @@ public class AuthController {
         log.info("New user registered: {}", user.toString());
         if (role.getName() == ERole.ROLE_CLIENT) {
             clientService.createClient(
-                    CreateClientRequest.builder().
-                            dni(user.getDni())
+                    CreateClientRequest.builder()
                             .userId(user.getId())
                             .name(signUpRequest.getName())
                             .lastName(signUpRequest.getLastName())

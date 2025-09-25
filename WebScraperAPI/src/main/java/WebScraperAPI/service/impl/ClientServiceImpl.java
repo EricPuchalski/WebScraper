@@ -31,14 +31,14 @@ public class ClientServiceImpl implements ClientService {
 
 
     @Override
-    public Client getByDniEntity(String dni) {
-        return clientRepository.findByDni(dni)
-                .orElseThrow(() -> new IllegalArgumentException("Client not found with dni: " + dni));
+    public Client getEntityByEmail(String email) {
+        return clientRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Client not found with email: " + email));
     }
 
     @Override
-    public ClientResponseDto getByDni(String dni) {
-        Client client = getByDniEntity(dni);
+    public ClientResponseDto getByEmail(String email) {
+        Client client = getEntityByEmail(email);
         return mapper.toResponse(client);
     }
 

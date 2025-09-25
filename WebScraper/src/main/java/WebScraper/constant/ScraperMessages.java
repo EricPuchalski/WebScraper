@@ -5,10 +5,12 @@ public class ScraperMessages {
     //FULLH4RD
     public static final String PAGE_FULLH4RD = "FullH4rd";
     public static final String BASE_URL_FULLH4RD = "https://fullh4rd.com.ar";
+    public static final String PAGE_LOGO_FULLH4RD = "https://fullh4rd.com.ar/img/logo-fh-lg.png";
 
     // GEZATEK
     public static final String PAGE_GEZATEK = "Gezatek";
     public static final String BASE_URL_GEZATEK = "https://www.gezatek.com.ar";
+    public static final String PAGE_LOGO_GEZATEK = "https://www.gezatek.com.ar/images/gezatek-logo.png";
 
     // MASTERTECH
     public static final String PAGE_MASTERTECH= "MasterTech";
@@ -21,4 +23,5 @@ public class ScraperMessages {
     //CURRENCY
     public static final String CURRENCY_ARS = "ARS";
 
+    public static final String CURRENCY_PYG = "PYG";
 }

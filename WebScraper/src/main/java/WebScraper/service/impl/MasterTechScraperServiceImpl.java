@@ -117,7 +117,15 @@ public class MasterTechScraperServiceImpl implements MasterTechScraperService {
     }
 
     private void insertNewProduct(String title, String imgUrl, String productUrl, Double price, List<ProductResponseDto> productList) {
-        Product newProduct = new Product(title, imgUrl, productUrl, ScraperMessages.PAGE_MASTERTECH);
+        Product newProduct = Product.builder()
+                        .name(title)
+                        .imageUrl(imgUrl)
+                .priceHistory(new ArrayList<>())
+                        .productUrl(productUrl)
+                        .price(price)
+                        .currency(ScraperMessages.CURRENCY_PYG)
+                        .page(ScraperMessages.PAGE_MASTERTECH)
+                        .build();
         newProduct.getPriceHistory().add(new PriceHistory(price, LocalDateTime.now(), "PYG"));
         masterTechScraperRepository.save(newProduct);
         productList.add(productMapper.toDto(newProduct));

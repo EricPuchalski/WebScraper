@@ -160,9 +160,13 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
         List<PriceHistory> ph = p.getPriceHistory();
         Double last = (ph.isEmpty() ? null : ph.get(ph.size() - 1).getPrice());
 
-        // PUBLICAR SOLO SI BAJÓ
-        this.publishIfPriceDropped(p, last, price);
-
+        // si bajó el precio ponerlo en oferta y publicar, sino sacarlo de oferta
+        if (last != null && price < last) {
+            p.setHasPriceDropped(true);
+            this.publishPriceDropped(p);
+        } else {
+            p.setHasPriceDropped(false);
+        }
         // Actualizar historial si cambió
         if (last == null || !last.equals(price)) {
          this.updatePriceHistory(ph, p, price, now);
@@ -171,7 +175,16 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
     }
 
     private Product insertNewProduct(String title, String imageUrl, String productUrl, Double price, LocalDateTime now) {
-        Product p = new Product(title, imageUrl, productUrl, ScraperMessages.PAGE_FULLH4RD);
+        Product p = Product.builder().
+                name(title).
+                imageUrl(imageUrl).
+                productUrl(productUrl).
+                hasPriceDropped(false).
+                pageLogoUrl(ScraperMessages.PAGE_LOGO_FULLH4RD).
+                page(ScraperMessages.PAGE_FULLH4RD).
+                priceHistory(new ArrayList<>()).
+                currency(ScraperMessages.CURRENCY_ARS).build();
+
         p.getPriceHistory().add(new PriceHistory(price, now, ScraperMessages.CURRENCY_ARS));
 
         // Nuevo → activo y con fecha de activación
@@ -192,15 +205,13 @@ public class FullH4rdScraperServiceImpl implements FullH4rdScraperService {
         return ScraperMessages.BASE_URL_FULLH4RD + (relativeUrl.startsWith("/") ? "" : "/") + relativeUrl;
     }
 
-    private void publishIfPriceDropped(Product p, Double lastPrice, Double newPrice) {
-        if (lastPrice != null && newPrice < lastPrice) {
+    private void publishPriceDropped(Product p) {
             priceDropPublisher.publish(PriceDropDetectedEvent.builder()
                     .eventId(UUID.randomUUID().toString())
                     .productId(p.getId())
                     .detectedAt(Instant.now().atZone(ZoneId.systemDefault()).toInstant())
                     .build(
                     ));
-        }
     }
 
     private void updatePriceHistory(List<PriceHistory> ph, Product p, Double price, LocalDateTime now){

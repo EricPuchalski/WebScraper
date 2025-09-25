@@ -2,6 +2,7 @@ package WebScraperAPI.controller;
 
 import WebScraperAPI.dto.request.ClientRequestDto;
 import WebScraperAPI.dto.request.FavoriteRequestDto;
+import WebScraperAPI.dto.response.ClientFavoritesResponseDto;
 import WebScraperAPI.dto.response.ClientResponseDto;
 import WebScraperAPI.dto.response.FavoriteResponseDto;
 import WebScraperAPI.service.ClientService;
@@ -31,25 +32,22 @@ public class ClientController {
         return ResponseEntity.ok(clientService.createClientForUser(client));
     }
 
-    @PutMapping("/me/favorites/{productId}")
-   public ResponseEntity<FavoriteResponseDto> setFavorite(
+    @PutMapping("me/favorites/{productId}")
+    public FavoriteResponseDto toggleFavorite(
             @PathVariable String productId,
-            @RequestBody FavoriteRequestDto req,
-            @RequestHeader String header
-    ) {
+            @RequestHeader String header) {
         String token = header.replace("Bearer ", "");
-        String dni = jwtUtils.getDniFromJwt(token);
-
-        FavoriteResponseDto response = favoriteService.setFavorite(dni, productId, req.isFavorite());
-        return ResponseEntity.ok(response);
+        String email = jwtUtils.getEmailFromJwt(token);
+        return favoriteService.setFavorite(email, productId);
     }
 
-    @GetMapping("/me/favorites")
-    public ResponseEntity<List<FavoriteResponseDto>> list(@RequestHeader String header) {
-        String token = header.replace("Bearer ", "");
-        String dni = jwtUtils.getDniFromJwt(token);
 
-        return ResponseEntity.ok(favoriteService.listAll(dni));
+    @GetMapping("/me/favorites")
+    public ResponseEntity<List<ClientFavoritesResponseDto>> list(@RequestHeader String header) {
+        String token = header.replace("Bearer ", "");
+        String email = jwtUtils.getEmailFromJwt(token);
+
+        return ResponseEntity.ok(favoriteService.listAll(email));
     }
 
 

@@ -18,6 +18,9 @@ public class ProductResponseDto {
     private List<PriceHistoryResponseDto> priceHistory;
     private String imageUrl;
     private String productUrl;
+    private String discountPercentage;
+    private Boolean hasPriceDropped;
+    private String pageLogoUrl;
     private String page;
     private Double price;
     private String currency;

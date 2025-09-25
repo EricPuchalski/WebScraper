@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 public class ClientResponseDto {
     private String id;
     private String userId;
-    private String dni;
     private String email;
     private String name;
     private String lastName;

@@ -9,6 +9,6 @@ import lombok.Data;
 @AllArgsConstructor
 public class FavoriteResponseDto {
     private String productId;
-    private String clientDni;
+    private String clientEmail;
     private boolean favorite;
 }

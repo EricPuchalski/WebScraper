@@ -143,9 +143,12 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
         List<PriceHistory> ph = p.getPriceHistory();
         Double last = (ph.isEmpty() ? null : ph.get(ph.size() - 1).getPrice());
 
-        // publicar SOLO si bajó
-        publishIfPriceDropped(p, last, price);
-
+        if (last != null && price < last) {
+            p.setHasPriceDropped(true);
+            this.publishPriceDropped(p);
+        } else {
+            p.setHasPriceDropped(false);
+        }
         // actualizar historial si cambió
         if (last == null || !last.equals(price)) {
             this.updatePrice(p, price);
@@ -162,6 +165,7 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
         Product nProduct = this.buildProduct(title, imageUrl, productUrl, price);
 
         nProduct.setActive(true);
+        nProduct.setHasPriceDropped(false);
         nProduct.setLastActivationDate(now);
         nProduct.setDate(now);
         nProduct.setPrice(price);
@@ -170,21 +174,23 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
         productList.add(nProduct);
     }
 
-    private void publishIfPriceDropped(Product p, Double lastPrice, Double newPrice) {
-        if (lastPrice != null && newPrice < lastPrice) {
-            priceDropPublisher.publish(PriceDropDetectedEvent.builder()
-                    .eventId(UUID.randomUUID().toString())
-                    .productId(p.getId())
-                    .detectedAt(Instant.now().atZone(ZoneId.systemDefault()).toInstant())
-                    .build(
-                    ));
-        }
+    private void publishPriceDropped(Product p) {
+        priceDropPublisher.publish(PriceDropDetectedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .productId(p.getId())
+                .detectedAt(Instant.now().atZone(ZoneId.systemDefault()).toInstant())
+                .build(
+                ));
     }
 
     private Product buildProduct(String title, String imageUrl, String productUrl, Double price){
         Product nProduct = Product.builder()
                 .name(title)
                 .imageUrl(imageUrl)
+                .price(price)
+                .priceHistory(new ArrayList<>())
+                .pageLogoUrl(ScraperMessages.PAGE_LOGO_GEZATEK)
+                .currency(ScraperMessages.CURRENCY_ARS)
                 .productUrl(productUrl)
                 .page(ScraperMessages.PAGE_GEZATEK)
                 .build();

@@ -11,7 +11,6 @@ public class ClientMapper {
     public Client toEntity(ClientRequestDto req) {
         return Client.builder()
                 .userId(req.getUserId())
-                .dni(req.getDni())
                 .name(req.getName())
                 .email(req.getEmail())
                 .lastName(req.getLastName())
@@ -22,7 +21,6 @@ public class ClientMapper {
         return ClientResponseDto.builder()
                 .id(c.getId())
                 .userId(c.getUserId())
-                .dni(c.getDni())
                 .name(c.getName())
                 .lastName(c.getLastName())
                 .email(c.getEmail())

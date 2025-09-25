@@ -7,7 +7,7 @@ import WebScraperAPI.model.Client;
 public interface ClientService {
     ClientResponseDto createClientForUser   (ClientRequestDto clientRequestDto);
 
-    Client getByDniEntity(String dni);           // uso interno, devuelve la entidad
-    ClientResponseDto getByDni(String dni);
+    Client getEntityByEmail(String id);           // uso interno, devuelve la entidad
+    ClientResponseDto getByEmail(String dni);
 
 }

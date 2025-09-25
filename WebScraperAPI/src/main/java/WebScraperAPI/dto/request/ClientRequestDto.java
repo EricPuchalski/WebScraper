@@ -8,7 +8,6 @@ public class ClientRequestDto {
         @NotBlank
         private String userId;
 
-        private String dni;
         private String email;
 
         @NotBlank

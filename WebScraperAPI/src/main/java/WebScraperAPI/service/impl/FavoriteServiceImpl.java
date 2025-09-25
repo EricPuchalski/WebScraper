@@ -1,9 +1,12 @@
 package WebScraperAPI.service.impl;
 
+import WebScraperAPI.dto.response.ClientFavoritesResponseDto;
 import WebScraperAPI.dto.response.ClientResponseDto;
 import WebScraperAPI.dto.response.FavoriteResponseDto;
+import WebScraperAPI.dto.response.ProductResponseDto;
 import WebScraperAPI.mapper.ClientMapper;
 import WebScraperAPI.mapper.FavoriteMapper;
+import WebScraperAPI.mapper.ProductMapper;
 import WebScraperAPI.model.Client;
 import WebScraperAPI.model.Favorite;
 import WebScraperAPI.model.Product;
@@ -12,85 +15,85 @@ import WebScraperAPI.repository.FavoriteRepository;
 import WebScraperAPI.repository.ProductRepository;
 import WebScraperAPI.service.ClientService;
 import WebScraperAPI.service.FavoriteService;
-import com.mongodb.DuplicateKeyException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class FavoriteServiceImpl implements FavoriteService {
-    private final ClientService clientService;          // 👈 buscar Client por DNI acá, no en este service
+    private final ClientService clientService;
     private final ProductRepository productRepository;
     private final FavoriteRepository favoriteRepository;
     private final FavoriteMapper favoriteMapper;
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
+    private final ProductMapper productMapper;
 
-    public FavoriteServiceImpl(ClientService clientService, ProductRepository productRepository, FavoriteRepository favoriteRepository, FavoriteMapper favoriteMapper, ClientRepository clientRepository, ClientMapper clientMapper) {
+    public FavoriteServiceImpl(ClientService clientService, ProductRepository productRepository, FavoriteRepository favoriteRepository, FavoriteMapper favoriteMapper, ClientRepository clientRepository, ClientMapper clientMapper, ProductMapper productMapper) {
         this.clientService = clientService;
         this.productRepository = productRepository;
         this.favoriteRepository = favoriteRepository;
         this.favoriteMapper = favoriteMapper;
         this.clientRepository = clientRepository;
         this.clientMapper = clientMapper;
+        this.productMapper = productMapper;
     }
 
     @Transactional
-    public FavoriteResponseDto setFavorite(String dni, String productId, boolean desired) {
-        Client client = clientService.getByDniEntity(dni);
+    public FavoriteResponseDto setFavorite(String email, String productId) {
+        Client client = clientService.getEntityByEmail(email);
+        String clientId = client.getId();
 
-        if (desired) {
-            try {
-                favoriteRepository.save(new Favorite(null, client.getId(), productId));
-            } catch (DuplicateKeyException e) {
-                log.debug("Favorite ya existía (clientId={}, productId={})", client.getId(), productId);
-            }
-            return FavoriteResponseDto.builder()
-                    .productId(productId)
-                    .clientDni(dni)
-                    .favorite(true)
-                    .build();
+        boolean currentlyFavorite = favoriteRepository.existsByClientIdAndProductId(clientId, productId);
+
+        if (currentlyFavorite) {
+            favoriteRepository.deleteByClientIdAndProductId(clientId, productId);
         } else {
-            favoriteRepository.deleteByClientIdAndProductId(client.getId(), productId);
-            return FavoriteResponseDto.builder()
-                    .productId(productId)
-                    .clientDni(dni)
-                    .favorite(false)
-                    .build();
+            // No es favorito →
+            favoriteRepository.save(new Favorite(null, clientId, productId));
         }
+
+        return FavoriteResponseDto.builder()
+                .productId(productId)
+                .clientEmail(email)
+                .favorite(!currentlyFavorite)
+                .build();
     }
 
-
     @Override
-    public List<FavoriteResponseDto> listAll(String dni) {
-        // 1) Client por DNI
-        Client client = clientService.getByDniEntity(dni);
+    public List<ClientFavoritesResponseDto> listAll(String email) {
+        // 1) Cliente por email
+        Client client = clientService.getEntityByEmail(email);
 
         // 2) Todos los favoritos del cliente
         List<Favorite> favs = favoriteRepository.findByClientId(client.getId());
         if (favs.isEmpty()) return List.of();
 
-        // 3) Traer productos en bloque para evitar N+1
-        List<String> productIds = favs.stream().map(Favorite::getProductId).toList();
-        Map<String, Product> productsById = productRepository.findAllById(productIds)
-                .stream().collect(Collectors.toMap(Product::getId, p -> p));
-
-        String clientDni = client.getDni();
-        return favs.stream()
-                .map(fav -> {
-                    Product p = productsById.get(fav.getProductId());
-                    String name = (p != null) ? p.getName() : "(eliminado)";
-                    return favoriteMapper.toResponseDto(fav, name, clientDni);
-                })
+        // 3) Extraer IDs de productos
+        List<String> productIds = favs.stream()
+                .map(Favorite::getProductId)
+                .distinct()
                 .toList();
+
+        // 4) Buscar productos por sus IDs
+        List<Product> products = productRepository.findAllById(productIds);
+
+        // 5) Mapear a ProductResponseDto
+        List<ProductResponseDto> productDtos = products.stream()
+                .map(productMapper::toDto) // depende de tu mapper
+                .toList();
+
+        // 6) Armar la respuesta
+        ClientFavoritesResponseDto response = new ClientFavoritesResponseDto();
+        response.setProducts(productDtos);
+
+        return List.of(response);
     }
+
 
     @Override
     public List<ClientResponseDto> listClientsWhoFavedProduct(String productId) {

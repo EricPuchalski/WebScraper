@@ -8,7 +8,11 @@ import java.util.List;
 
 @Repository
 public interface FavoriteRepository extends MongoRepository<Favorite, String> {
-    List<Favorite> findByClientId(String clientId);
     void deleteByClientIdAndProductId(String clientId, String productId);
     List<Favorite> findByProductId(String productId);
+
+
+    List<Favorite> findByClientId(String id);
+
+    boolean existsByClientIdAndProductId(String clientId, String productId);
 }

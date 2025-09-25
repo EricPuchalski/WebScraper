@@ -8,7 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface ClientRepository extends MongoRepository<Client, String> {
-    boolean existsByUserId(String id);
-
-   Optional<Client> findByDni(String dni);
+   Optional<Client> findByEmail(String dni);
 }

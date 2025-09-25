@@ -7,13 +7,12 @@ import WebScraperAPI.mapper.ProductMapper;
 import WebScraperAPI.model.Product;
 import WebScraperAPI.repository.ProductRepository;
 import WebScraperAPI.service.ProductService;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.util.List;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -28,28 +27,31 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ProductResponseDto> getAllProductsAndName(int pageNumber, int size, String sortBy, String market, String search) {
-        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(sortBy).ascending());
+    public Page<ProductResponseDto> getAllProductsAndName(
+            int pageNumber, int size, String sortBy, String sortDir, List<String> markets, String search
+    ) {
+        Sort.Direction direction = sortDir.equalsIgnoreCase("desc")
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
 
-        boolean hasMarket = StringUtils.hasText(market);
-        boolean hasSearch = StringUtils.hasText(search);
+        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(direction, sortBy));
 
-        Page<Product> result = findProducts(hasMarket, hasSearch, market, search, pageable);
+        boolean hasMarkets = markets != null && !markets.isEmpty();
+        boolean hasSearch  = StringUtils.hasText(search);
+
+        Page<Product> result = findProducts(hasMarkets, hasSearch, markets, search, pageable);
         return result.map(mapper::toDto);
     }
 
-    private Page<Product> findProducts(boolean hasMarket, boolean hasSearch, String market, String search, Pageable pageable) {
-        if (hasMarket && hasSearch) {
-            return productRepository.findByPageIgnoreCaseAndNameContainingIgnoreCase(market.trim(), search.trim(), pageable);
-        }
-        if (hasMarket) {
-            return productRepository.findByPageIgnoreCase(market.trim(), pageable);
-        }
-        if (hasSearch) {
-            return productRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
-        }
+    private Page<Product> findProducts(
+            boolean hasMarkets, boolean hasSearch, List<String> markets, String search, Pageable pageable
+    ) {
+        if (hasMarkets && hasSearch) return productRepository.findByPageInAndNameContainingIgnoreCase(markets, search.trim(), pageable);
+        if (hasMarkets) return productRepository.findByPageIn(markets, pageable);
+        if (hasSearch) return productRepository.findByNameContainingIgnoreCase(search.trim(), pageable);
         return productRepository.findAll(pageable);
     }
+
     @Override
     @Transactional(readOnly = true)
     public ProductResponseDto getProductById(String id) {
@@ -58,5 +60,35 @@ public class ProductServiceImpl implements ProductService {
         return mapper.toDto(product);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponseDto> getOffers(
+            int pageNumber, int size, String sortBy, String sortDir, List<String> markets, String search
+    ) {
+
+        Sort.Direction direction = sortDir.equalsIgnoreCase("desc")
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
+
+        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(direction, sortBy));
+
+        boolean hasMarkets = markets != null && !markets.isEmpty();
+        boolean hasSearch  = StringUtils.hasText(search);
+
+        Page<Product> result = findOffers(hasMarkets, hasSearch, markets, search, pageable);
+        return result.map(mapper::toDto);
+    }
+
+    private Page<Product> findOffers(
+            boolean hasMarkets, boolean hasSearch, List<String> markets, String search, Pageable pageable
+    ) {
+        if (hasMarkets && hasSearch) return productRepository.findByHasPriceDroppedTrueAndPageInAndNameContainingIgnoreCase(markets, search.trim(), pageable);
+
+        if (hasMarkets) return productRepository.findByHasPriceDroppedTrueAndPageIn(markets, pageable);
+
+        if (hasSearch) return productRepository.findByHasPriceDroppedTrueAndNameContainingIgnoreCase(search.trim(), pageable);
+
+        return productRepository.findByHasPriceDroppedTrue(pageable);
+    }
 
 }

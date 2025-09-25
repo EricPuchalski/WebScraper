@@ -13,13 +13,13 @@ public class JwtUtils {
     @Value("${scraper.app.jwtSecret}")
     private  String jwtSecret ;
 
-    public String getDniFromJwt(String token) {
+    public String getEmailFromJwt(String token) {
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(jwtSecret.getBytes(StandardCharsets.UTF_8))
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        return claims.get("dni", String.class);
+        return claims.get("email", String.class);
     }
 
 }

@@ -19,7 +19,8 @@ public class SecurityConfig {
               .pathMatchers("api/v1/scraper/**").permitAll()
               .pathMatchers("api/v1/products/**").permitAll()
               .pathMatchers("api/v1/favorites/**").permitAll()
-        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+              .pathMatchers("api/v1/clients/me/**").hasRole("ROLE_CLIENT")
+              .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
               .pathMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
               .anyExchange().authenticated()
       );

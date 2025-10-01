@@ -6,5 +6,5 @@ import java.util.List;
 
 @Data
 public class ClientFavoritesResponseDto {
-    private List<ProductResponseDto> products;
+    private List<ProductSummaryResponseDto> products;
 }

@@ -1,6 +1,7 @@
 package WebScraperAPI.mapper;
 
 import WebScraperAPI.dto.response.ProductResponseDto;
+import WebScraperAPI.dto.response.ProductSummaryResponseDto;
 import WebScraperAPI.model.Product;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -78,6 +79,23 @@ public class ProductMapper {
                 .lastActivationDate(dto.getLastActivationDate())
                 .lastDeactivationDate(dto.getLastDeactivationDate())
                 .date(dto.getDate())
+                .build();
+    }
+
+    public ProductSummaryResponseDto toSummary(Product product){
+        if (product == null) return null;
+
+        return ProductSummaryResponseDto.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .imageUrl(product.getImageUrl())
+                .productUrl(product.getProductUrl())
+                .page(product.getPage())
+                .pageLogoUrl(product.getPageLogoUrl())
+                .price(product.getPrice())
+                .hasPriceDropped(product.getHasPriceDropped())
+                .discountPercentage(product.getHasPriceDropped() ? product.getPriceHistory().size() >= 2 ?
+                        String.format("%.0f%%", ((product.getPriceHistory().get(product.getPriceHistory().size() - 2).getPrice() - product.getPriceHistory().get(product.getPriceHistory().size() - 1).getPrice()) / product.getPriceHistory().get(product.getPriceHistory().size() - 2).getPrice()) * 100) : "0%" : "0%")
                 .build();
     }
 }

@@ -7,10 +7,12 @@ import WebScraperAPI.dto.response.ClientResponseDto;
 import WebScraperAPI.dto.response.FavoriteResponseDto;
 import WebScraperAPI.service.ClientService;
 import WebScraperAPI.service.FavoriteService;
-import WebScraperAPI.util.JwtUtils;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 
 @RestController
@@ -19,12 +21,10 @@ public class ClientController {
 
     private final FavoriteService favoriteService;
     private final ClientService clientService;
-    private final JwtUtils jwtUtils;
 
-    public ClientController(FavoriteService favoriteService, ClientService clientService, JwtUtils jwtUtils) {
+    public ClientController(FavoriteService favoriteService, ClientService clientService) {
         this.favoriteService = favoriteService;
         this.clientService = clientService;
-        this.jwtUtils = jwtUtils;
     }
 
     @PostMapping
@@ -35,20 +35,20 @@ public class ClientController {
     @PutMapping("me/favorites/{productId}")
     public FavoriteResponseDto toggleFavorite(
             @PathVariable String productId,
-            @RequestHeader String header) {
-        String token = header.replace("Bearer ", "");
-        String email = jwtUtils.getEmailFromJwt(token);
-        return favoriteService.setFavorite(email, productId);
+            @AuthenticationPrincipal Jwt jwt) throws AccessDeniedException {
+        return favoriteService.setFavorite(extractEmail(jwt), productId);
     }
 
 
     @GetMapping("/me/favorites")
-    public ResponseEntity<List<ClientFavoritesResponseDto>> list(@RequestHeader String header) {
-        String token = header.replace("Bearer ", "");
-        String email = jwtUtils.getEmailFromJwt(token);
-
-        return ResponseEntity.ok(favoriteService.listAll(email));
+    public ResponseEntity<List<ClientFavoritesResponseDto>> list(@AuthenticationPrincipal Jwt jwt) throws AccessDeniedException {
+        return ResponseEntity.ok(favoriteService.listAll(extractEmail(jwt)));
     }
-
+    private String extractEmail(Jwt jwt) throws AccessDeniedException {
+        if (jwt == null) {
+            throw new AccessDeniedException("Missing authentication token");
+        }
+        return jwt.getClaim("email");
+    }
 
 }

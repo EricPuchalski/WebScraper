@@ -1,9 +1,6 @@
 package WebScraperAPI.service.impl;
 
-import WebScraperAPI.dto.response.ClientFavoritesResponseDto;
-import WebScraperAPI.dto.response.ClientResponseDto;
-import WebScraperAPI.dto.response.FavoriteResponseDto;
-import WebScraperAPI.dto.response.ProductResponseDto;
+import WebScraperAPI.dto.response.*;
 import WebScraperAPI.mapper.ClientMapper;
 import WebScraperAPI.mapper.FavoriteMapper;
 import WebScraperAPI.mapper.ProductMapper;
@@ -83,8 +80,8 @@ public class FavoriteServiceImpl implements FavoriteService {
         List<Product> products = productRepository.findAllById(productIds);
 
         // 5) Mapear a ProductResponseDto
-        List<ProductResponseDto> productDtos = products.stream()
-                .map(productMapper::toDto) // depende de tu mapper
+        List<ProductSummaryResponseDto> productDtos = products.stream()
+                .map(productMapper::toSummary) // depende de tu mapper
                 .toList();
 
         // 6) Armar la respuesta

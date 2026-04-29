@@ -98,13 +98,19 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
                                        Set<String> seenUrls, LocalDateTime now) {
         try {
             String title = product.select(CssSelectorsMessages.GEZATEK_TITLE).text();
+
             Double price = extractPrice(product);
+
             String imageUrl = product.select(CssSelectorsMessages.GEZATEK_IMAGE).attr("src");
-            String productUrl = buildFullUrl(product.select(CssSelectorsMessages.GEZATEK_LINK).attr("href"));
 
-            if (productUrl.isBlank()) return;
+            String productUrl = buildFullUrl(
+                    product.select(CssSelectorsMessages.GEZATEK_LINK).attr("href")
+            );
 
-            //  marcar como visto
+            if (productUrl.isBlank() || title.isBlank()) {
+                return;
+            }
+
             seenUrls.add(productUrl);
 
             Optional<Product> existingProduct = gezatekScraperRepository.findByProductUrl(productUrl);
@@ -114,16 +120,22 @@ public class GezatekScraperServiceImpl implements GezatekScraperService {
             } else {
                 insertNewProduct(title, imageUrl, productUrl, price, productList, now);
             }
+
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error procesando producto individual: " + e.getMessage(), e);
         }
     }
-
     private Double extractPrice(Element product) {
-        String priceText = product.select(CssSelectorsMessages.GEZATEK_PRICE).text().substring(12);
+        String priceText = product
+                .select(CssSelectorsMessages.GEZATEK_PRICE)
+                .attr(CssSelectorsMessages.GEZATEK_PRICE);
+
+        if (priceText.isBlank()) {
+            return null;
+        }
+
         return Double.valueOf(priceText);
     }
-
     private String buildFullUrl(String relativeUrl) {
         return ScraperMessages.BASE_URL_GEZATEK + (relativeUrl.startsWith("/") ? "" : "/") + relativeUrl;
     }

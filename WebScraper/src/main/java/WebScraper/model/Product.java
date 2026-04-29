@@ -1,6 +1,5 @@
 package WebScraper.model;
 
-
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -16,10 +15,15 @@ import java.util.List;
 @Setter
 @Document(collection = "products")
 public class Product {
+
     @Id
     private String id;
+
     private String name;
-    private List<PriceHistory> priceHistory;
+
+    @Builder.Default
+    private List<PriceHistory> priceHistory = new ArrayList<>();
+
     private String imageUrl;
     private String productUrl;
     private String page;
@@ -30,11 +34,10 @@ public class Product {
     private LocalDateTime lastActivationDate;
     private LocalDateTime lastDeactivationDate;
 
-
     public Product(String id, String name, List<PriceHistory> priceHistory, String imageUrl, String productUrl, String page, Double price, LocalDateTime date, String currency) {
         this.id = id;
         this.name = name;
-        this.priceHistory = new ArrayList<>();
+        this.priceHistory = priceHistory != null ? priceHistory : new ArrayList<>();
         this.imageUrl = imageUrl;
         this.productUrl = productUrl;
         this.page = page;
@@ -50,5 +53,4 @@ public class Product {
         this.page = page;
         this.priceHistory = new ArrayList<>();
     }
-
 }

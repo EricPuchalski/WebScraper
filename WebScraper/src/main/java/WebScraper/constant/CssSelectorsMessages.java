@@ -11,11 +11,12 @@ public class CssSelectorsMessages {
     public static final String FULLH4RD_NEXT_PAGE      = "a[rel=next]";
 
     // ================= GEZATEK =================
-    public static final String GEZATEK_PRODUCT_LIST    = ".product";
-    public static final String GEZATEK_TITLE           = "h2";
-    public static final String GEZATEK_PRICE           = "div > h3";
-    public static final String GEZATEK_IMAGE           = ".img-responsive";
-    public static final String GEZATEK_LINK            = ".click";
+    public static final String GEZATEK_TITLE = "h4.card-title a";
+    public static final String GEZATEK_PRICE = "h4[data-precio]";
+    public static final String GEZATEK_IMAGE = "img.img-fluid";
+    public static final String GEZATEK_LINK = "div.view.overlay.imagen a, h4.card-title a";
+    public static final String GEZATEK_PRODUCT_LIST = "div[class*=item], div.card, div.producto, article";
+
 
     // ================= MASTERTECH =================
     public static final String MASTERTECH_PRODUCT_LIST = ".product";
